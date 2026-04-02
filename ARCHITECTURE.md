@@ -13,5 +13,4 @@ The project follows a **Fully Serverless** architecture to minimize costs and ma
 
 ## Infrastructure Diagram Goal
 
-_Planned: [Insert LucidChart/Excalidraw Export here]_
-z
+_Planned: [Insert Excalidraw Export here]_

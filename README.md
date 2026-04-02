@@ -2,6 +2,10 @@
 
 Stop searching, start finding. VantageX.ai is an AWS-powered shopping assistant that uses GenAI to find the perfect product at the perfect price.
 
+## 🚧 Under Development
+
+This project is currently in active development. Its primary goal is to provide hands-on experience with AWS fundamentals through a practical Data Scraping, Retrieval-Augmented Generation (RAG), and GenAI application.
+
 ## 🚀 The Vision
 
 To move from "Search & Filter" to "Consult & Recommend." VantageX.ai helps users find products that meet complex, real-world needs through semantic reasoning.
