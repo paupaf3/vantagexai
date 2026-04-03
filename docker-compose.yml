@@ -1,0 +1,12 @@
+# Terraform + AWS CLI Docker Compose
+# This Compose file lets you run Terraform and AWS CLI in a container
+version: '3.8'
+services:
+  terraform:
+    image: cytopia/terraform-awscli:latest
+    volumes:
+      - ./infra:/workspace
+      - ~/.aws:/root/.aws:ro
+    working_dir: /workspace
+    entrypoint: /bin/sh
+    tty: true
