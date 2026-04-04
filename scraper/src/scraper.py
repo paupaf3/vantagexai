@@ -1,15 +1,19 @@
+
 import requests
 import json
 import os
 import base64
+import sys
 from dotenv import load_dotenv
 from items import ITEMS
 
 load_dotenv()
 
-# These will come from your eBay Developer Portal
+# eBay credentials
 EBAY_CLIENT_ID = os.getenv("EBAY_CLIENT_ID", "YOUR_CLIENT_ID")
 EBAY_CLIENT_SECRET = os.getenv("EBAY_CLIENT_SECRET", "YOUR_CLIENT_SECRET")
+# Serper.dev credentials
+SERPER_API_KEY = os.getenv("SERPER_API_KEY", "YOUR_SERPER_API_KEY")
 
 
 def get_application_token():
@@ -69,38 +73,114 @@ def search_ebay_products(token, query):
         return []
 
 
+def search_serper_products(api_key, query):
+    """
+    Uses Serper.dev API to search for products (Google Shopping).
+    API docs: https://serper.dev/
+    """
+    url = "https://google.serper.dev/shopping"
+    headers = {
+        "X-API-KEY": api_key,
+        "Content-Type": "application/json"
+    }
+    payload = {"q": query}
+    response = requests.post(url, headers=headers, json=payload)
+    if response.status_code == 200:
+        return response.json().get("shopping", [])
+    else:
+        print(f"Error searching Serper.dev: {response.text}")
+        return []
+
+
+def normalize_ebay(item, query):
+    # eBay Browse API sometimes includes 'itemWebUrl', 'title', 'price', etc.
+    # For rating, check for 'rating' or 'reviewRating' fields if present, else None
+    rating = None
+    rating_count = None
+    if 'reviewRating' in item:
+        # eBay's reviewRating is an object with 'averageRating' and 'reviewCount'
+        rating = item['reviewRating'].get('averageRating')
+        rating_count = item['reviewRating'].get('reviewCount')
+    elif 'rating' in item:
+        rating = item['rating']
+    elif 'stars' in item:
+        rating = item['stars']
+    if 'ratingCount' in item:
+        rating_count = item['ratingCount']
+    return {
+        "productId": item.get("itemId"),
+        "site": "ebay",
+        "name": item.get("title"),
+        "price": item.get("price", {}).get("value"),
+        "currency": item.get("price", {}).get("currency"),
+        "description": item.get("shortDescription", f"New {query} on eBay"),
+        "url": item.get("itemWebUrl"),
+        "rating": rating,
+        "ratingCount": rating_count
+    }
+
+
+def normalize_serper(item, query):
+    # Serper.dev shopping API may include 'rating', 'stars', or similar fields
+    rating = item.get("rating")
+    if rating is None:
+        rating = item.get("stars")
+    rating_count = item.get("ratingCount")
+    if rating_count is None:
+        rating_count = item.get("reviews")
+    if rating_count is None:
+        rating_count = item.get("reviewCount")
+    return {
+        "productId": item.get("productId", item.get("link")),
+        "site": "serper",
+        "name": item.get("title"),
+        "price": item.get("price"),
+        "currency": item.get("currency"),
+        "description": item.get("description", f"New {query} from Serper.dev"),
+        "url": item.get("link"),
+        "rating": rating,
+        "ratingCount": rating_count
+    }
+
+
 def main():
     os.makedirs("../data/scraper", exist_ok=True)
 
-    print("Requesting OAuth token from eBay...")
-    token = get_application_token()
+    if len(sys.argv) < 2 or sys.argv[1] not in ("ebay", "serper"):
+        print("Usage: python scraper.py [ebay|serper]")
+        sys.exit(1)
 
-    if not token:
-        print("Could not proceed without a valid token.")
-        return
+    mode = sys.argv[1]
 
-    for query in ITEMS:
-        print(f"Searching eBay for: {query}")
-        raw_results = search_ebay_products(token, query)
-
-        formatted_products = []
-        for item in raw_results:
-            # Normalizing the data for your VantageX.ai schema
-            formatted_products.append({
-                "productId": item.get("itemId"),
-                "site": "ebay",
-                "name": item.get("title"),
-                "price": item.get("price", {}).get("value"),
-                "currency": item.get("price", {}).get("currency"),
-                "description": item.get("shortDescription", f"New {query} on eBay"),
-                "url": item.get("itemWebUrl")
-            })
-
-        filename = f"../data/scraper/{query.replace(' ', '_')}.json"
-        with open(filename, "w") as f:
-            json.dump(formatted_products, f, indent=4)
-
-        print(f"Saved {len(formatted_products)} items to {filename}")
+    if mode == "ebay":
+        print("Requesting OAuth token from eBay...")
+        token = get_application_token()
+        if not token:
+            print("Could not proceed without a valid token.")
+            return
+        for query in ITEMS:
+            print(f"Searching eBay for: {query}")
+            raw_results = search_ebay_products(token, query)
+            formatted_products = [normalize_ebay(
+                item, query) for item in raw_results]
+            filename = f"../data/scraper/{query.replace(' ', '_')}_ebay.json"
+            with open(filename, "w") as f:
+                json.dump(formatted_products, f, indent=4)
+            print(f"Saved {len(formatted_products)} items to {filename}")
+    elif mode == "serper":
+        api_key = SERPER_API_KEY
+        if not api_key or api_key == "YOUR_SERPER_API_KEY":
+            print("Missing or invalid SERPER_API_KEY in .env")
+            return
+        for query in ITEMS:
+            print(f"Searching Serper.dev for: {query}")
+            raw_results = search_serper_products(api_key, query)
+            formatted_products = [normalize_serper(
+                item, query) for item in raw_results]
+            filename = f"../data/scraper/{query.replace(' ', '_')}_serper.json"
+            with open(filename, "w") as f:
+                json.dump(formatted_products, f, indent=4)
+            print(f"Saved {len(formatted_products)} items to {filename}")
 
 
 if __name__ == "__main__":
