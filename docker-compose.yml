@@ -3,9 +3,7 @@
 version: '3.8'
 services:
   terraform:
-    build:
-      context: ./infra
-      dockerfile: Dockerfile
+    image: hashicorp/terraform:latest
     volumes:
       - ./infra:/workspace
       - ~/.aws:/root/.aws:ro
