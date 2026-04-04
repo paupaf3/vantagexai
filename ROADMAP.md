@@ -2,10 +2,15 @@
 
 ## Phase 1: Data & Ingestion (The Foundation) 🏗️
 
-- [ ] Initialize AWS Environment (IAM, CLI).
-- [ ] Create **S3 Bucket** for product "data drops."
+- [x] Initialize AWS Environment (IAM, CLI).
+- [x] Create **S3 Bucket** for product "data drops."
 - [ ] Setup **DynamoDB** table using Single-Table Design.
-- [ ] Create Web Scraping logic to create static dataset (avoid running in AWS due to cost, and use static data obtained from local execution)
+- [ ] Build a fully automated, event-driven scraping pipeline:
+  - [x] Use **Terraform** to provision all resources (S3, EC2, Lambda, API Gateway, IAM roles).
+  - [ ] Deploy scraper on **EC2** (with IAM role for S3 write access).
+  - [ ] Expose an **API Gateway** endpoint to trigger scraping jobs.
+  - [ ] Use **Lambda** to receive API calls and trigger the scraper (via SSM Run Command or direct Lambda execution if possible).
+  - [ ] Store all scraped data in S3.
 - [ ] Create a **Lambda Python** script to parse JSON product data into the database.
 
 ## Phase 2: The Intelligence Engine (AI Core) 🧠
