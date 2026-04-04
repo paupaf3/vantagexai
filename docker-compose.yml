@@ -3,10 +3,12 @@
 version: '3.8'
 services:
   terraform:
-    image: cytopia/terraform-awscli:latest
+    build:
+      context: ./infra
+      dockerfile: Dockerfile
     volumes:
       - ./infra:/workspace
       - ~/.aws:/root/.aws:ro
     working_dir: /workspace
-    entrypoint: /bin/sh
+    entrypoint: ["/bin/sh"]
     tty: true
