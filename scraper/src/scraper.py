@@ -148,13 +148,15 @@ def normalize_serper(item, query):
         rating_count = item.get("reviews")
     if rating_count is None:
         rating_count = item.get("reviewCount")
+    description = item.get("description")
+
     return {
         "productId": item.get("productId", item.get("link")),
         "site": "serper",
         "name": item.get("title"),
         "price": item.get("price"),
         "currency": item.get("currency"),
-        "description": item.get("description", f"New {query} from Serper.dev"),
+        "description": description,
         "url": item.get("link"),
         "rating": rating,
         "ratingCount": rating_count
