@@ -118,13 +118,20 @@ def normalize_ebay(item, query):
         rating = item['stars']
     if 'ratingCount' in item:
         rating_count = item['ratingCount']
+    # Extract description, condition, and buying options if available
+    description = item.get("shortDescription") or item.get("description")
+    condition = item.get("condition")
+    buying_options = item.get(
+        "buyingOptions") if "buyingOptions" in item else item.get("buyingOption")
     return {
         "productId": item.get("itemId"),
         "site": "ebay",
         "name": item.get("title"),
         "price": item.get("price", {}).get("value"),
         "currency": item.get("price", {}).get("currency"),
-        "description": item.get("shortDescription", f"New {query} on eBay"),
+        "description": description,
+        "condition": condition,
+        "buyingOptions": buying_options,
         "url": item.get("itemWebUrl"),
         "rating": rating,
         "ratingCount": rating_count
