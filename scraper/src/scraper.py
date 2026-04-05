@@ -9,9 +9,21 @@ from items import ITEMS
 
 load_dotenv()
 
-# eBay credentials
+
+# eBay credentials and environment
 EBAY_CLIENT_ID = os.getenv("EBAY_CLIENT_ID", "YOUR_CLIENT_ID")
 EBAY_CLIENT_SECRET = os.getenv("EBAY_CLIENT_SECRET", "YOUR_CLIENT_SECRET")
+# 'sandbox' or 'production'
+EBAY_ENV = os.getenv("EBAY_ENV", "production").lower()
+
+# Set eBay API URLs based on environment
+if EBAY_ENV == "sandbox":
+    EBAY_OAUTH_URL = "https://api.sandbox.ebay.com/identity/v1/oauth2/token"
+    EBAY_BROWSE_URL = "https://api.sandbox.ebay.com/buy/browse/v1/item_summary/search"
+else:
+    EBAY_OAUTH_URL = "https://api.ebay.com/identity/v1/oauth2/token"
+    EBAY_BROWSE_URL = "https://api.ebay.com/buy/browse/v1/item_summary/search"
+
 # Serper.dev credentials
 SERPER_API_KEY = os.getenv("SERPER_API_KEY", "YOUR_SERPER_API_KEY")
 
@@ -21,7 +33,7 @@ def get_application_token():
     eBay requires an OAuth 2.0 Client Credentials grant token 
     to use the Browse API.
     """
-    url = "https://api.ebay.com/identity/v1/oauth2/token"
+    url = EBAY_OAUTH_URL
 
     # Credentials must be Base64 encoded: "ClientID:ClientSecret"
     auth_str = f"{EBAY_CLIENT_ID}:{EBAY_CLIENT_SECRET}"
@@ -50,8 +62,7 @@ def search_ebay_products(token, query):
     Uses the Browse API to find items.
     """
     # eBay API endpoint for searching items
-    # DOCUMENTATION: https://developer.ebay.com/api-docs/buy/browse/resources/item_summary/methods/search
-    url = "https://api.ebay.com/buy/browse/v1/item_summary/search"
+    url = EBAY_BROWSE_URL
 
     headers = {
         "Authorization": f"Bearer {token}",
