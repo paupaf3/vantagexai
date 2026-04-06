@@ -3,7 +3,9 @@ import requests
 import json
 import os
 import base64
-import sys
+import argparse
+import boto3
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 from items import ITEMS
 
@@ -103,7 +105,7 @@ def search_serper_products(api_key, query):
         return []
 
 
-def normalize_ebay(item, query):
+def normalize_ebay(item, query, scrape_date):
     # eBay Browse API sometimes includes 'itemWebUrl', 'title', 'price', etc.
     # For rating, check for 'rating' or 'reviewRating' fields if present, else None
     rating = None
@@ -126,6 +128,8 @@ def normalize_ebay(item, query):
     return {
         "productId": item.get("itemId"),
         "site": "ebay",
+        "query": query,
+        "scrapeDate": scrape_date,
         "name": item.get("title"),
         "price": item.get("price", {}).get("value"),
         "currency": item.get("price", {}).get("currency"),
@@ -138,7 +142,7 @@ def normalize_ebay(item, query):
     }
 
 
-def normalize_serper(item, query):
+def normalize_serper(item, query, scrape_date):
     # Serper.dev shopping API may include 'rating', 'stars', or similar fields
     rating = item.get("rating")
     if rating is None:
@@ -153,6 +157,8 @@ def normalize_serper(item, query):
     return {
         "productId": item.get("productId", item.get("link")),
         "site": "serper",
+        "query": query,
+        "scrapeDate": scrape_date,
         "name": item.get("title"),
         "price": item.get("price"),
         "currency": item.get("currency"),
@@ -163,14 +169,31 @@ def normalize_serper(item, query):
     }
 
 
+def upload_to_s3(local_file, bucket, s3_key):
+    s3 = boto3.client("s3")
+    try:
+        s3.upload_file(local_file, bucket, s3_key)
+        print(f"Successfully uploaded {local_file} to s3://{bucket}/{s3_key}")
+    except Exception as e:
+        print(f"Failed to upload {local_file} to S3: {e}")
+
+
 def main():
+    parser = argparse.ArgumentParser(
+        description="Scrape product data from eBay or Serper.")
+    parser.add_argument(
+        "mode", choices=["ebay", "serper"], help="Scraper mode: 'ebay' or 'serper'")
+    parser.add_argument("items", nargs="+", help="List of items to search for")
+    parser.add_argument(
+        "--s3-bucket", help="S3 bucket name to upload results. Falls back to S3_BUCKET env var.")
+    args = parser.parse_args()
+
     os.makedirs("../data/scraper", exist_ok=True)
 
-    if len(sys.argv) < 2 or sys.argv[1] not in ("ebay", "serper"):
-        print("Usage: python scraper.py [ebay|serper]")
-        sys.exit(1)
-
-    mode = sys.argv[1]
+    mode = args.mode
+    items = ITEMS if not args.items else args.items
+    s3_bucket = args.s3_bucket or os.getenv("S3_BUCKET")
+    scrape_date = datetime.now(timezone.utc).isoformat()
 
     if mode == "ebay":
         print("Requesting OAuth token from eBay...")
@@ -178,29 +201,35 @@ def main():
         if not token:
             print("Could not proceed without a valid token.")
             return
-        for query in ITEMS:
+        for query in items:
             print(f"Searching eBay for: {query}")
             raw_results = search_ebay_products(token, query)
             formatted_products = [normalize_ebay(
-                item, query) for item in raw_results]
+                item, query, scrape_date) for item in raw_results]
             filename = f"../data/scraper/{query.replace(' ', '_')}_ebay.json"
             with open(filename, "w") as f:
                 json.dump(formatted_products, f, indent=4)
             print(f"Saved {len(formatted_products)} items to {filename}")
+            if s3_bucket:
+                upload_to_s3(filename, s3_bucket,
+                             f"scraper/{os.path.basename(filename)}")
     elif mode == "serper":
         api_key = SERPER_API_KEY
         if not api_key or api_key == "YOUR_SERPER_API_KEY":
             print("Missing or invalid SERPER_API_KEY in .env")
             return
-        for query in ITEMS:
+        for query in items:
             print(f"Searching Serper.dev for: {query}")
             raw_results = search_serper_products(api_key, query)
             formatted_products = [normalize_serper(
-                item, query) for item in raw_results]
+                item, query, scrape_date) for item in raw_results]
             filename = f"../data/scraper/{query.replace(' ', '_')}_serper.json"
             with open(filename, "w") as f:
                 json.dump(formatted_products, f, indent=4)
             print(f"Saved {len(formatted_products)} items to {filename}")
+            if s3_bucket:
+                upload_to_s3(filename, s3_bucket,
+                             f"scraper/{os.path.basename(filename)}")
 
 
 if __name__ == "__main__":
