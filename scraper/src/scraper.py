@@ -7,7 +7,6 @@ import argparse
 import boto3
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-from items import ITEMS
 
 load_dotenv()
 
@@ -191,7 +190,7 @@ def main():
     os.makedirs("../data/scraper", exist_ok=True)
 
     mode = args.mode
-    items = ITEMS if not args.items else args.items
+    items = args.items
     s3_bucket = args.s3_bucket or os.getenv("S3_BUCKET")
     scrape_date = datetime.now(timezone.utc).isoformat()
 
