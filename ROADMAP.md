@@ -6,11 +6,15 @@
 - [x] Create **S3 Bucket** for product "data drops."
 - [ ] Setup **DynamoDB** table using Single-Table Design.
 - [ ] Build a fully automated, event-driven scraping pipeline:
-  - [x] Use **Terraform** to provision all resources (S3, EC2, Lambda, API Gateway, IAM roles).
-  - [ ] Deploy scraper on **EC2** (with IAM role for S3 write access).
-  - [ ] Expose an **API Gateway** endpoint to trigger scraping jobs.
-  - [ ] Use **Lambda** to receive API calls and trigger the scraper (via SSM Run Command or direct Lambda execution if possible).
-  - [ ] Store all scraped data in S3.
+  - [x] Use **Terraform** to provision all resources (S3, ECS Cluster, ECS Fargate, Lambda, API Gateway, IAM roles, CloudWatch logs).
+  - [x] Define scraper runtime as an **ECS Task Definition** (FARGATE launch type).
+  - [x] Deploy **ECS Fargate** compute for scraper jobs.
+  - [x] Expose an **API Gateway** endpoint to trigger scraping jobs.
+  - [x] Use **Lambda** to receive API calls and trigger scraper jobs via **ECS RunTask**.
+  - [x] Store all scraped data in S3.
+  - [ ] Add API authentication and rate limiting for trigger endpoint.
+  - [ ] Add job status endpoint (task ARN polling via ECS DescribeTasks).
+  - [ ] Automate Docker image push to ECR (CI/CD).
 - [ ] Create a **Lambda Python** script to parse JSON product data into the database.
 
 ## Phase 2: The Intelligence Engine (AI Core) 🧠
